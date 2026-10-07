@@ -14,11 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
         logoEl.alt = cfg.logo.alt;
     }
 
-    // --- Header: Person Details (shown when scrolled) ---
-    const personNameEl = document.getElementById('person-name');
-    const personTitleEl = document.getElementById('person-title');
-    if (personNameEl) personNameEl.textContent = cfg.person.fullName;
-    if (personTitleEl) personTitleEl.textContent = cfg.person.title;
 
     // --- First Page: Company Name & Tagline (shown on logo page) ---
     const companyNameEl = document.getElementById('company-name');
@@ -26,7 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const companyTaglineEl = document.getElementById('company-tagline');
     if (companyTaglineEl) companyTaglineEl.textContent = cfg.company.tagline;
-
 
     // --- About Section ---
     const aboutHeadingEl = document.getElementById('about-heading');
@@ -46,6 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnEmail) btnEmail.href = `mailto:${cfg.contact.email}`;
     if (btnLocation) btnLocation.href = cfg.contact.locationUrl;
     if (btnReview) btnReview.href = cfg.contact.reviewUrl;
+
+    // --- Profile Card (above social links) ---
+    const profileImg = document.getElementById('profile-img');
+    const profileName = document.getElementById('profile-name');
+    const profileTitle = document.getElementById('profile-title');
+    const profileCompany = document.getElementById('profile-company');
+    if (profileImg) {
+        profileImg.src = cfg.person.profilePhoto;
+        profileImg.alt = cfg.person.fullName;
+    }
+    if (profileName) profileName.textContent = cfg.person.fullName;
+    if (profileTitle) profileTitle.textContent = cfg.person.title;
+    if (profileCompany) profileCompany.textContent = cfg.company.name;
 
     // --- Social Media Icons (dynamically generated) ---
     const socialBar = document.getElementById('social-bar');
@@ -103,129 +110,81 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================================
     // vCARD DOWNLOAD (built from config)
     // ============================================================
-    function getContactPhoto() {
-        // 1. If configured in config.js and valid, use it
-        if (cfg.vcard && cfg.vcard.photoBase64 && cfg.vcard.photoBase64.trim().length > 100) {
-            const format = (cfg.vcard.photoFormat || 'JPEG').toUpperCase();
-            return {
-                data: cfg.vcard.photoBase64.trim(),
-                type: format
-            };
-        }
-
-        // 2. Fallback: dynamically generate square avatar from the page logo
-        try {
-            const logo = document.getElementById('logo');
-            if (logo && logo.complete && logo.naturalWidth > 0) {
-                const canvas = document.createElement('canvas');
-                const size = 400;
-                canvas.width = size;
-                canvas.height = size;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillRect(0, 0, size, size);
-
-                    const padding = 28;
-                    const innerSize = size - padding * 2;
-                    const w = logo.naturalWidth;
-                    const h = logo.naturalHeight;
-                    const ratio = w / h;
-                    let drawW, drawH;
-                    if (ratio >= 1) {
-                        drawW = innerSize;
-                        drawH = innerSize / ratio;
-                    } else {
-                        drawH = innerSize;
-                        drawW = innerSize * ratio;
-                    }
-                    const dx = (size - drawW) / 2;
-                    const dy = (size - drawH) / 2;
-
-                    ctx.drawImage(logo, dx, dy, drawW, drawH);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-                    const parts = dataUrl.split(',');
-                    if (parts.length > 1 && parts[1].length > 100) {
-                        return { data: parts[1], type: 'JPEG' };
-                    }
-                }
-            }
-        } catch (err) {
-            console.warn('Dynamic logo extraction from canvas:', err);
-        }
-
-        return null;
-    }
-
     const saveContactBtn = document.getElementById('btn-save-contact');
     if (saveContactBtn) {
-        saveContactBtn.addEventListener('click', (e) => {
+        saveContactBtn.addEventListener('click', async (e) => {
             e.preventDefault();
+
+            // Convert profile photo to base64 for vCard
+            let photoBase64 = cfg.vcard.photoBase64 || '';
+            let photoType = 'PNG';
+            if (cfg.person.profilePhoto) {
+                try {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = reject;
+                        img.src = cfg.person.profilePhoto;
+                    });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                    photoBase64 = dataUrl.split(',')[1];
+                    photoType = 'JPEG';
+                } catch (err) {
+                    console.warn('Could not convert profile photo for vCard:', err);
+                }
+            }
 
             // Build social URL lines dynamically
             const socialUrlLines = cfg.socials.map(s =>
                 `URL;type=${s.platform}:${s.url}`
-            ).join('\r\n');
+            ).join('\n');
 
             const socialProfileLines = cfg.socials.map(s =>
                 `X-SOCIALPROFILE;type=${s.platform.toLowerCase()}:${s.url}`
-            ).join('\r\n');
+            ).join('\n');
 
             // Build phone number lines dynamically (supports multiple numbers)
             const phoneLines = cfg.contact.phones.map(p =>
                 `TEL;TYPE=${p.label.toUpperCase()},VOICE:${p.number}`
-            ).join('\r\n');
+            ).join('\n');
 
-            const photoInfo = getContactPhoto();
-            const photoLine = photoInfo ? `PHOTO;ENCODING=b;TYPE=${photoInfo.type}:${photoInfo.data}` : '';
-
-            const vcardLines = [
+            const vcardContent = [
                 'BEGIN:VCARD',
                 'VERSION:3.0',
-                // Company name as the primary display name for the contact
-                `FN:${cfg.company.name}`,
-                `N:${cfg.company.name};;;;`,
+                // Personal name as the primary display name for the contact
+                `FN:${cfg.person.fullName}`,
+                `N:${cfg.person.lastName};${cfg.person.firstName};${cfg.person.middleName || ''};;`,
                 `ORG:${cfg.company.name}`,
-                `TITLE:${cfg.person.fullName} - ${cfg.person.title}`,
+                `TITLE:${cfg.person.title}`,
                 `NOTE:${cfg.vcard.contactNote}`,
-            ];
-
-            if (photoLine) {
-                vcardLines.push(photoLine);
-            }
-
-            if (phoneLines) {
-                vcardLines.push(phoneLines);
-            }
-
-            vcardLines.push(
+                `PHOTO;ENCODING=b;TYPE=${photoType}:${photoBase64}`,
+                phoneLines,
                 `EMAIL;TYPE=PREF,INTERNET:${cfg.contact.email}`,
                 `URL;type=Location:${cfg.contact.locationUrl}`,
-                `URL;type=WhatsApp:https://wa.me/${cfg.contact.whatsapp}`
-            );
-
-            if (socialUrlLines) vcardLines.push(socialUrlLines);
-            if (socialProfileLines) vcardLines.push(socialProfileLines);
-
-            vcardLines.push(
+                `URL;type=WhatsApp:https://wa.me/${cfg.contact.whatsapp}`,
+                socialUrlLines,
+                socialProfileLines,
                 `ADR;TYPE=WORK:;;${cfg.vcard.addressStreet};${cfg.vcard.addressCity};${cfg.vcard.addressState};;${cfg.vcard.addressCountry}`,
                 'END:VCARD',
-                ''
-            );
-
-            const vcardContent = vcardLines.filter(line => line.length > 0).join('\r\n');
+            ].join('\n');
 
             const blob = new Blob([vcardContent], { type: 'text/vcard;charset=utf-8' });
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `${cfg.company.name.replace(/\s+/g, '_')}.vcf`;
+            link.download = `${cfg.person.fullName.replace(/\s+/g, '_')}.vcf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
 
             // Clean up
-            setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+            setTimeout(() => window.URL.revokeObjectURL(url), 100);
         });
     }
 });

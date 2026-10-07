@@ -26,12 +26,8 @@
     <!-- ========================================== -->
     <header class="header" id="header">
         <img src="" alt="" class="logo" id="logo">
-        <div class="header-text-container" id="header-name">
-            <div class="header-name" id="person-name"></div>
-            <div class="header-title" id="person-title"></div>
-        </div>
         <h1 class="company-name" id="company-name"></h1>
-        <h3 class="company-tagline" id="company-tagline"></h3>
+        <p class="company-tagline" id="company-tagline"></p>
     </header>
 
     <main class="scroll-container">
@@ -55,13 +51,25 @@
 
             <!-- CONTACTS SECTION (Hidden initially, fades in on scroll) -->
             <div class="contacts-section" id="contacts-section">
+                <!-- 0. PROFILE CARD -->
+                <div class="profile-card" id="profile-card">
+                    <div class="profile-photo-wrapper">
+                        <img src="" alt="" class="profile-photo" id="profile-img">
+                    </div>
+                    <div class="profile-info">
+                        <h2 class="profile-name" id="profile-name"></h2>
+                        <p class="profile-title" id="profile-title"></p>
+                        <p class="profile-company" id="profile-company"></p>
+                    </div>
+                </div>
+
                 <!-- 1. SOCIAL MEDIA LINKS (populated by JS) -->
                 <div class="social-bar" id="social-bar"></div>
 
                 <!-- 2. ACTION BUTTONS (Grid) -->
                 <div class="action-grid">
                     <a href="#" id="btn-call" class="btn">
-                        <i class="fas fa-phone"></i>
+                        <i class="fa-solid fa-phone"></i>
                         <span>Call Now</span>
                     </a>
                     <a href="#" id="btn-whatsapp" target="_blank" class="btn">
